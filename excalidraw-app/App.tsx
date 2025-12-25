@@ -5,6 +5,7 @@ import {
   CaptureUpdateAction,
   reconcileElements,
   useEditorInterface,
+  exportToCanvas,
 } from "@excalidraw/excalidraw";
 import { trackEvent } from "@excalidraw/excalidraw/analytics";
 import { getDefaultAppState } from "@excalidraw/excalidraw/appState";
@@ -799,6 +800,49 @@ const ExcalidrawWrapper = () => {
     },
   };
 
+
+
+
+
+  const generateScreenshot = async () => {
+    const elements = excalidrawAPI!.getSceneElements();
+    console.log(elements);
+    let canvas = await exportToCanvas({
+      elements,
+      appState: {
+        // ...excalidrawAPI!.getAppState(),
+
+        exportWithDarkMode: false,
+      },
+      files: excalidrawAPI!.getFiles(),
+      // getDimensions: () => { return {width: 500, height: 500}}
+    })
+
+    let urlResp = await (await fetch("https://ed0wgxgbu1.execute-api.eu-central-1.amazonaws.com/prod/upload-image", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        fileName: "current_state.png",
+        contentType: "image/png"
+      })
+    })).json();
+
+    let url = urlResp.uploadUrl;
+
+    await fetch(url, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "image/png"
+      },
+      body: await new Promise<Blob>((resolve) => canvas.toBlob((blob) => resolve(blob!), "image/png"))
+    });
+  
+  }
+
+
+
   return (
     <div
       style={{ height: "100%" }}
@@ -1160,6 +1204,10 @@ const ExcalidrawWrapper = () => {
           />
         )}
       </Excalidraw>
+      <div id="image-test" style={{position: "fixed", right: "10px", bottom: "50px", zIndex: 100}}></div>
+      <div style={{position: "fixed", right: "10px", bottom: "10px", zIndex: 100}}>
+        <button onClick={generateScreenshot}>make Screenshot</button>
+      </div>
     </div>
   );
 };
